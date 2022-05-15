@@ -158,8 +158,10 @@ def main():
 		model.build(support_x_test, support_y_test, query_x_test, query_y_test, K, meta_batchsz, mode='eval')
 	else:
 		model.build(support_x_test, support_y_test, query_x_test, query_y_test, K + 5, meta_batchsz, mode='test')
+		# inference的时候多backward几次
 	model.summ_op = tf.summary.merge_all()
 
+	# 不要optimizer
 	all_vars = filter(lambda x: 'meta_optim' not in x.name, tf.trainable_variables())
 	for p in all_vars:
 		print(p)

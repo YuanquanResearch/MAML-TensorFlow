@@ -87,8 +87,9 @@ class DataGenerator:
 			for _ in tqdm.tqdm(range(num_total_batches), 'generating episodes'): # 200000
 				# from image folder sample 5 class randomly
 				sampled_folders = random.sample(folders, self.nway)
-				random.shuffle(sampled_folders)
+				random.shuffle(sampled_folders)  # YQ: 重复了
 				# sample 16 images from selected folders, and each with label 0-4, (0/1..., path), orderly, no shuffle!
+				# YQ: 对于当前5-way 1shot 15query而言，5way的label重命名为0~4
 				# len: 5 * 16
 				labels_and_images = get_images(sampled_folders, range(self.nway), nb_samples=self.nimg, shuffle=False)
 
@@ -150,6 +151,8 @@ class DataGenerator:
 				new_label_list.append(tf.gather(label_batch, true_idxs))
 
 			# [80, 84*84*3]
+			# YQ: 这80张图片，每5张每5张一组，共16组，第1组可为support set，后15组可为query set；
+			# 在每组内部，5张图片label为0~4；
 			new_list = tf.concat(new_list, 0)  # has shape [self.num_classes*self.num_samples_per_class, self.dim_input]
 			# [80]
 			new_label_list = tf.concat(new_label_list, 0)
@@ -157,6 +160,7 @@ class DataGenerator:
 			all_label_batches.append(new_label_list)
 
 		# [4, 80, 84*84*3]
+		# YQ: 一个batch内共有4个task，每个task的5-way都是不一样的；
 		all_image_batches = tf.stack(all_image_batches)
 		# [4, 80]
 		all_label_batches = tf.stack(all_label_batches)

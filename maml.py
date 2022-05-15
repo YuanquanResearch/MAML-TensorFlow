@@ -64,9 +64,13 @@ class MAML:
 			                                             tf.argmax(support_y, axis=1))
 			# compute gradients
 			grads = tf.gradients(support_loss, list(self.weights.values()))
+			# 得到了support set上的权重梯度
 			# grad and variable dict
 			gvs = dict(zip(self.weights.keys(), grads))
 
+			# 更新参数（新增了一份参数）为theta_pi，其中theta_pi在一次meta stask中update了5次
+			# 每次update时，均是在support set上训练计算loss后update，同时在query_set上forward计算query_loss后保存下
+			# 注意对于不同的task，theta_pi是不同的，但theta_pi仅是中间结果，不影响原始theta的更新，因为query_loss=f(theta_pi)=f(g(theta))
 			# theta_pi = theta - alpha * grads
 			fast_weights = dict(zip(self.weights.keys(),
 			                        [self.weights[key] - self.train_lr * gvs[key] for key in self.weights.keys()]))
@@ -140,6 +144,8 @@ class MAML:
 			# meta-train optim
 			optimizer = tf.train.AdamOptimizer(self.meta_lr, name='meta_optim')
 			# meta-train gradients, query_losses[-1] is the accumulated loss across over tasks.
+			# 主模型参数theta的更新是跨各个子任务的query_loss的，且只取了最后一次，
+			# 本质是各个子任务在support_set上backward(train) 5次，然后在qurey_set上forward一次；
 			gvs = optimizer.compute_gradients(self.query_losses[-1])
 			# meta-train grads clipping
 			gvs = [(tf.clip_by_norm(grad, 10), var) for grad, var in gvs]
@@ -229,6 +235,8 @@ class MAML:
 		:param training:
 		:return:
 		"""
+
+		# 对support set，b就是1*5；对于query set，b就是15*5
 		# [b, 84, 84, 3]
 		x = tf.reshape(x, [-1, self.d, self.d, self.c], name='reshape1')
 
@@ -244,5 +252,6 @@ class MAML:
 
 		output = tf.add(tf.matmul(hidden4, weights['w5']), weights['b5'], name='fc1')
 
+		# [b, 5]  对没绑输入图片进行5分类
 		return output
 
